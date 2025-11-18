@@ -1,11 +1,20 @@
 {
   "name": "opfs-cloud-file",
-  "private": true,
+  "description": "Map a cloud file to OPFS with polling providers.",
   "version": "0.0.0",
   "type": "module",
+  "main": "./dist/opfs-cloud-file.umd.cjs",
+  "module": "./dist/opfs-cloud-file.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/opfs-cloud-file.js",
+      "require": "./dist/opfs-cloud-file.umd.cjs"
+    }
+  },
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "devDependencies": {
@@ -14,6 +23,7 @@
     "jest-environment-jsdom": "^30.2.0",
     "ts-jest": "^29.4.5",
     "typescript": "~5.9.3",
-    "vite": "^7.2.2"
+    "vite": "^7.2.2",
+    "vite-plugin-dts": "^4.5.4"
   }
 }

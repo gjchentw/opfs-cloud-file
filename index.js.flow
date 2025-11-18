@@ -1,0 +1,21 @@
+// @flow
+export type ProviderConfig = { [string]: any };
+export type BaseCloudProvider = {
+  supportsPolling(): boolean,
+  poll(): Promise<boolean>,
+};
+export type OpfsCloudFileOptions = {
+  provider: {
+    id?: string,
+    instance: BaseCloudProvider,
+    config?: ProviderConfig,
+  },
+  opfsPath: string,
+  pollingInterval?: number,
+};
+declare export class OpfsCloudFile {
+  constructor(options: OpfsCloudFileOptions): void;
+  start(): Promise<void>;
+  stop(): Promise<void>;
+  sync(): Promise<void>;
+}
