@@ -14,8 +14,9 @@ export interface BaseCloudProvider {
 }
 
 export interface OpfsCloudFileOptions {
-  provider: { id?: string; instance: BaseCloudProvider; config?: ProviderConfig };
-  opfsPath: string;
+  type: any,
+  provider: { id?: string; instance?: BaseCloudProvider; config?: ProviderConfig };
+  opfsPath?: string;
   pollingInterval?: number;
   useWorkerHash?: boolean;
 }
@@ -32,7 +33,7 @@ export class OpfsCloudFile {
   removeEventListener(type: string, listener: (ev:any)=>void): void;
 }
 
-export const SOURCE_FILE_CHANGED: string;
+export const CLOUD_FILE_CHANGED: string;
 export const OPFS_CLOUD_ERROR: string;
 
 export class GoogleDriveV2Provider {

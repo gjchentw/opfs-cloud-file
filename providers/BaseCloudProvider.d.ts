@@ -1,1 +1,1 @@
-export class BaseCloudProvider {...}
+export class BaseCloudProvider {}

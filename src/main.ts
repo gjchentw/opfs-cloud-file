@@ -1,4 +1,5 @@
 import './style.css'
+import { OpfsCloudFile } from '../index'
 
 declare const google: any;
 
@@ -20,8 +21,21 @@ const client = google.accounts.oauth2.initTokenClient({
   client_id: import.meta.env.VITE_CLIENT_ID,
   scope: 'https://www.googleapis.com/auth/drive.file',
   callback: (tokenResponse: any) => {
-    console.log(tokenResponse.access_token);
-  },
+    // init OpfsCloudFile
+    try {
+      new OpfsCloudFile({
+        type: import.meta.env.VITE_PROVIDER,
+        provider: {
+          config: {
+            fileId: import.meta.env.VITE_FILE_ID,
+            accessToken: tokenResponse.access_token,
+          }
+        },
+      })
+    } catch (e) {
+      console.error(e);
+    }
+  }
 });
 
 document.getElementById('google_sign_in_button')!.onclick = () => {
