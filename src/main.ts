@@ -1,5 +1,7 @@
 import './style.css'
 
+declare const google: any;
+
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div class="container">
     <!-- Google Sign-In Button -->
@@ -11,14 +13,13 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       </div>
     </button>
   </div>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
 `
 
 const client = google.accounts.oauth2.initTokenClient({
   // client_id is passing from shell VITE_CLIENT_ID
   client_id: import.meta.env.VITE_CLIENT_ID,
   scope: 'https://www.googleapis.com/auth/drive.file',
-  callback: (tokenResponse) => {
+  callback: (tokenResponse: any) => {
     console.log(tokenResponse.access_token);
   },
 });
