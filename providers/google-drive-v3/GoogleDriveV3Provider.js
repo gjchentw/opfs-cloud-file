@@ -38,6 +38,24 @@ export class GoogleDriveV3Provider extends BaseCloudProvider {
     return await res.arrayBuffer();
   }
 
+  async upload(data) {
+    const url = `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(this.fileId)}?uploadType=media`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+        'Content-Type': this._meta.mimeType || 'application/octet-stream'
+      },
+      body: data
+    });
+
+    if (!res.ok) throw new Error('upload failed: ' + res.status);
+
+    this._meta = await res.json();
+    this._lastRemoteMD5 = this._meta.md5Checksum;
+    return this._meta;
+  }
+
   async poll() {
     const meta = await this.getFileMetadata();
     const remoteMD5 = meta && meta.md5Checksum ? meta.md5Checksum : null;

@@ -1,4 +1,4 @@
-import { CLOUD_FILE_CHANGED, OPFS_CLOUD_ERROR } from "./events.js";
+import { CLOUD_FILE_CHANGED, OPFS_CLOUD_ERROR, LOCAL_FILE_CHANGED } from "./events.js";
 import { readOpfsFile, writeOpfsFile } from "../utils/opfs.js";
 import { md5FromArrayBuffer } from "../utils/md5.js";
 import { GoogleDriveV2Provider } from "../providers/google-drive-v2/GoogleDriveV2Provider.js";
@@ -6,7 +6,7 @@ import { GoogleDriveV3Provider } from "../providers/google-drive-v3/GoogleDriveV
 
 export class OpfsCloudFile {
   constructor(options) {
-    if (!options || !options.provider || (!options.provider.instance && !options.type) ) throw new Error('provider.instance required');
+    if (!options || !options.provider || (!options.provider.instance && !options.type)) throw new Error('provider.instance required');
 
     if (options.provider.instance) {
       this.provider = options.provider.instance;
@@ -35,6 +35,27 @@ export class OpfsCloudFile {
       this._emit(OPFS_CLOUD_ERROR, { error: err });
     });
 
+    this.addEventListener(LOCAL_FILE_CHANGED, () => {
+      this._onLocalFileChanged();
+    });
+  }
+
+  async _onLocalFileChanged() {
+    const localHash = await this._computeLocalHash();
+    this._lastLocalHash = localHash;
+
+    if (this._lastLocalHash !== this._lastRemoteHash) {
+      try {
+        const ab = await readOpfsFile(this.opfsPath + '/' + this._filename);
+        if (ab) {
+          const meta = await this.provider.upload(ab);
+          this._lastRemoteHash = meta.md5Checksum;
+          this._lastLocalHash = await this._computeLocalHash(); // Recompute to be sure
+        }
+      } catch (e) {
+        this._emit(OPFS_CLOUD_ERROR, { error: e });
+      }
+    }
   }
 
   addEventListener(type, cb) {
@@ -98,8 +119,8 @@ export class OpfsCloudFile {
 
   async downloadAndReplace() {
     const data = await this.provider.download();
-    
-    await writeOpfsFile(this.opfsPath  + '/' + this._filename, data);
+
+    await writeOpfsFile(this.opfsPath + '/' + this._filename, data);
     this._lastLocalHash = await this._computeLocalHash();
     return this._lastLocalHash;
   }
