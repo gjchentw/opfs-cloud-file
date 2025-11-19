@@ -2,6 +2,20 @@ export async function readOpfsFile(path) {
   try {
     const root = await navigator.storage.getDirectory();
     const handle = await root.getFileHandle(path);
+
+    // Worker support: sync access handle
+    if (handle.createSyncAccessHandle) {
+      const accessHandle = await handle.createSyncAccessHandle();
+      try {
+        const size = accessHandle.getSize();
+        const buffer = new ArrayBuffer(size);
+        accessHandle.read(buffer, { at: 0 });
+        return buffer;
+      } finally {
+        accessHandle.close();
+      }
+    }
+
     const file = await handle.getFile();
     return await file.arrayBuffer();
   } catch (e) {
@@ -15,6 +29,20 @@ export async function writeOpfsFile(path, buffer) {
   const filename = folders.pop();
   const place = folders.length ? await mkdir(root, folders) : root;
   const handle = await place.getFileHandle(filename, { create: true });
+
+  // Worker support: sync access handle
+  if (handle.createSyncAccessHandle) {
+    const accessHandle = await handle.createSyncAccessHandle();
+    try {
+      accessHandle.truncate(0);
+      accessHandle.write(buffer, { at: 0 });
+      accessHandle.flush();
+    } finally {
+      accessHandle.close();
+    }
+    return;
+  }
+
   const writable = await handle.createWritable();
   await writable.write(buffer);
   await writable.close();

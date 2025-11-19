@@ -1,5 +1,5 @@
 import './style.css'
-import { OpfsCloudFile } from '../index'
+// import { OpfsCloudFile } from '../index'
 
 declare const google: any;
 
@@ -21,20 +21,21 @@ const client = google.accounts.oauth2.initTokenClient({
   client_id: import.meta.env.VITE_CLIENT_ID,
   scope: 'https://www.googleapis.com/auth/drive.file',
   callback: (tokenResponse: any) => {
-    // init OpfsCloudFile
-    try {
-      new OpfsCloudFile({
+    // init OpfsCloudFile in worker
+    const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
+
+    worker.postMessage({
+      type: 'init',
+      config: {
         type: import.meta.env.VITE_PROVIDER,
-        provider: {
-          config: {
-            fileId: import.meta.env.VITE_FILE_ID,
-            accessToken: tokenResponse.access_token,
-          }
-        },
-      })
-    } catch (e) {
-      console.error(e);
-    }
+        fileId: import.meta.env.VITE_FILE_ID,
+        accessToken: tokenResponse.access_token,
+      }
+    });
+
+    worker.onmessage = (e) => {
+      console.log('Message from worker:', e.data);
+    };
   }
 });
 
