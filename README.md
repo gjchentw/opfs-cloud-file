@@ -4,7 +4,7 @@
 ![Test Status](https://img.shields.io/github/actions/workflow/status/gjchentw/opfs-cloud-file/test.yml?label=Tests)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-**OpfsCloudFile** is a library that synchronizes files between the Origin Private File System (OPFS) and cloud storage providers (currently supporting Google Drive). It leverages Web Workers and the OPFS synchronous API (`createSyncAccessHandle`) for high-performance file operations without blocking the main thread.
+**OpfsCloudFile** is a library that synchronizes a file between the Origin Private File System (OPFS) and cloud storage providers (currently supporting Google Drive). It leverages Web Workers and the OPFS synchronous API (`createSyncAccessHandle`) for high-performance file operations without blocking the main thread.
 
 ## Features
 
