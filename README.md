@@ -48,6 +48,13 @@ cloudFile.addEventListener('opfs-cloud-error', (event) => {
 
 // Start syncing (happens automatically on init, but you can trigger manually)
 // cloudFile.sync();
+
+// Notify OpfsCloudFile when you modify the file locally
+// This triggers the auto-upload process
+function onFileSaved() {
+  cloudFile.dispatchEvent(new CustomEvent('local-file-changed'));
+}
+
 ```
 
 ## Contributing New Providers
