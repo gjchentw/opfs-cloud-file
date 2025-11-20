@@ -1,7 +1,7 @@
 {
   "name": "opfs-cloud-file",
   "description": "Map a cloud file to OPFS with polling providers.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": "gjchen <gjchentw@gmail.com>",
   "license": "MIT",
   "repository": {
