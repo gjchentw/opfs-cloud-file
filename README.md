@@ -14,6 +14,12 @@
 - **Extensible**: Easy to add new cloud storage providers.
 - **Google Drive Support**: Built-in support for Google Drive API V2 and V3.
 
+## Installation
+
+```bash
+npm install opfs-cloud-file
+```
+
 ## Usage
 
 Here is the simplest example of how to use `OpfsCloudFile` with Google Drive:
