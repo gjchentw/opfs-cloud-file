@@ -1,6 +1,5 @@
 import { CLOUD_FILE_CHANGED, OPFS_CLOUD_ERROR, LOCAL_FILE_CHANGED } from "./events.js";
 import { readOpfsFile, writeOpfsFile } from "../utils/opfs.js";
-import { md5FromArrayBuffer } from "../utils/md5.js";
 import { GoogleDriveV2Provider } from "../providers/google-drive-v2/GoogleDriveV2Provider.js";
 import { GoogleDriveV3Provider } from "../providers/google-drive-v3/GoogleDriveV3Provider.js";
 
