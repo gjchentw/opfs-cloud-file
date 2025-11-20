@@ -88,7 +88,7 @@ export class OpfsCloudFile {
       const changed = await this.provider.poll();
 
       if (changed) {
-        this._emit(CLOUD_FILE_CHANGED, { reason: 'remoteChanged', remoteHash });
+        this._emit(CLOUD_FILE_CHANGED, { reason: 'remoteChanged', remoteHash: this._lastRemoteHash });
       }
     } catch (err) {
       this._emit(OPFS_CLOUD_ERROR, { error: err });
