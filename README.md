@@ -93,7 +93,7 @@ class MyCloudProvider extends BaseCloudProvider {
   /**
    * Uploads the file content to the cloud.
    * @param {ArrayBuffer} data - The file content to upload.
-   * @returns {Promise<object>} - Metadata of the uploaded file (must include checksum).
+   * @returns {Promise<void>}
    */
   async upload(data) {
     // ...
@@ -104,6 +104,14 @@ class MyCloudProvider extends BaseCloudProvider {
    * @returns {Promise<boolean>} - True if the remote file has changed.
    */
   async poll() {
+    // ...
+  }
+
+  /**
+   * Returns the checksum of the remote file.
+   * @returns {Promise<string>}
+   */
+  async getRemoteFileChecksum() {
     // ...
   }
 

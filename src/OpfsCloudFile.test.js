@@ -13,8 +13,9 @@ jest.mock('../providers/google-drive-v2/GoogleDriveV2Provider', () => {
                 getFileName: jest.fn().mockResolvedValue('test.txt'),
                 download: jest.fn().mockResolvedValue(new ArrayBuffer(10)),
                 poll: jest.fn().mockResolvedValue(false),
-                upload: jest.fn().mockResolvedValue({ md5Checksum: 'new-remote-hash' }),
+                upload: jest.fn().mockResolvedValue(undefined),
                 checksum: jest.fn().mockResolvedValue('local-hash'),
+                getRemoteFileChecksum: jest.fn().mockResolvedValue('remote-hash'),
                 supportsPolling: jest.fn().mockReturnValue(true),
                 pollIntervalMs: 1000,
                 dispose: jest.fn().mockResolvedValue(undefined),
@@ -37,8 +38,9 @@ describe('OpfsCloudFile', () => {
             getFileName: jest.fn().mockResolvedValue('test.txt'),
             download: jest.fn().mockResolvedValue(new ArrayBuffer(10)),
             poll: jest.fn().mockResolvedValue(false),
-            upload: jest.fn().mockResolvedValue({ md5Checksum: 'new-remote-hash' }),
+            upload: jest.fn().mockResolvedValue(undefined),
             checksum: jest.fn().mockResolvedValue('local-hash'),
+            getRemoteFileChecksum: jest.fn().mockResolvedValue('remote-hash'),
             supportsPolling: jest.fn().mockReturnValue(true),
             pollIntervalMs: 1000,
             dispose: jest.fn().mockResolvedValue(undefined),
@@ -116,7 +118,8 @@ describe('OpfsCloudFile', () => {
             await Promise.resolve();
 
             // Setup hashes
-            opfsCloudFile._lastRemoteHash = 'old-hash';
+            // opfsCloudFile._lastRemoteHash = 'old-hash'; // Removed property
+            mockProvider.getRemoteFileChecksum.mockResolvedValue('old-hash');
             mockProvider.checksum.mockResolvedValue('new-hash'); // Local hash is different
 
             // Trigger local change
@@ -124,14 +127,15 @@ describe('OpfsCloudFile', () => {
 
             expect(readOpfsFile).toHaveBeenCalledWith('bucket/test.txt');
             expect(mockProvider.upload).toHaveBeenCalled();
-            expect(opfsCloudFile._lastRemoteHash).toBe('new-remote-hash');
+            // expect(opfsCloudFile._lastRemoteHash).toBe('new-remote-hash'); // Removed property
         });
 
         it('should NOT upload when hashes match', async () => {
             const opfsCloudFile = new OpfsCloudFile(config);
             await Promise.resolve();
 
-            opfsCloudFile._lastRemoteHash = 'same-hash';
+            // opfsCloudFile._lastRemoteHash = 'same-hash'; // Removed property
+            mockProvider.getRemoteFileChecksum.mockResolvedValue('same-hash');
             mockProvider.checksum.mockResolvedValue('same-hash');
 
             await opfsCloudFile._onLocalFileChanged();

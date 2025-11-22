@@ -24,7 +24,6 @@ export class OpfsCloudFile {
     this._timer = null;
     this._listeners = new Map();
     this._lastLocalHash = null;
-    this._lastRemoteHash = null;
     this._stopped = true;
 
     this.provider.getFileName().then((filename) => {
@@ -43,12 +42,12 @@ export class OpfsCloudFile {
     const localHash = await this._computeLocalHash();
     this._lastLocalHash = localHash;
 
-    if (this._lastLocalHash !== this._lastRemoteHash) {
+    const remoteHash = await this.provider.getRemoteFileChecksum();
+    if (this._lastLocalHash !== remoteHash) {
       try {
         const ab = await readOpfsFile(this.opfsPath + '/' + this._filename);
         if (ab) {
           const meta = await this.provider.upload(ab);
-          this._lastRemoteHash = meta.md5Checksum;
           this._lastLocalHash = await this._computeLocalHash(); // Recompute to be sure
         }
       } catch (e) {
@@ -87,7 +86,8 @@ export class OpfsCloudFile {
       const changed = await this.provider.poll();
 
       if (changed) {
-        this._emit(CLOUD_FILE_CHANGED, { reason: 'remoteChanged', remoteHash: this._lastRemoteHash });
+        const remoteHash = await this.provider.getRemoteFileChecksum();
+        this._emit(CLOUD_FILE_CHANGED, { reason: 'remoteChanged', remoteHash: remoteHash });
       }
     } catch (err) {
       this._emit(OPFS_CLOUD_ERROR, { error: err });

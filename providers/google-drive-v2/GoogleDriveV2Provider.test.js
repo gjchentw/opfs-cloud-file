@@ -85,7 +85,7 @@ describe('GoogleDriveV2Provider', () => {
                     body: data,
                 }
             );
-            expect(result).toEqual({ md5Checksum: 'new-hash' });
+            expect(result).toBeUndefined();
             expect(provider._lastRemoteMD5).toBe('new-hash');
         });
     });

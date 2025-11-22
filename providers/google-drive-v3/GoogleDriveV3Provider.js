@@ -53,7 +53,6 @@ export class GoogleDriveV3Provider extends BaseCloudProvider {
 
     this._meta = await res.json();
     this._lastRemoteMD5 = this._meta.md5Checksum;
-    return this._meta;
   }
 
   async poll() {
@@ -66,6 +65,10 @@ export class GoogleDriveV3Provider extends BaseCloudProvider {
     const changed = remoteMD5 !== this._lastRemoteMD5;
     this._lastRemoteMD5 = remoteMD5;
     return changed;
+  }
+
+  async getRemoteFileChecksum() {
+    return this._lastRemoteMD5;
   }
 
   async checksum(data) {
