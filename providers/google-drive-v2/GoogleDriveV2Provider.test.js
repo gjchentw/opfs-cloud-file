@@ -125,4 +125,97 @@ describe('GoogleDriveV2Provider', () => {
             expect(changed).toBe(false);
         });
     });
+
+    describe('supportsPolling', () => {
+        it('should return true', () => {
+            expect(provider.supportsPolling()).toBe(true);
+        });
+    });
+
+    describe('getFileName', () => {
+        it('should return file title from metadata', async () => {
+            global.fetch.mockResolvedValue({
+                ok: true,
+                json: jest.fn().mockResolvedValue({ title: 'test-file.txt', md5Checksum: 'abc', mimeType: 'text/plain' }),
+            });
+
+            const filename = await provider.getFileName();
+            expect(filename).toBe('test-file.txt');
+        });
+
+        it('should return null when metadata has no title', async () => {
+            global.fetch.mockResolvedValue({
+                ok: true,
+                json: jest.fn().mockResolvedValue({ md5Checksum: 'abc', mimeType: 'text/plain' }),
+            });
+
+            const filename = await provider.getFileName();
+            expect(filename).toBeNull();
+        });
+
+        it('should return null when metadata is null', async () => {
+            global.fetch.mockResolvedValue({
+                ok: true,
+                json: jest.fn().mockResolvedValue(null),
+            });
+
+            const filename = await provider.getFileName();
+            expect(filename).toBeNull();
+        });
+    });
+
+    describe('getRemoteFileChecksum', () => {
+        it('should return last remote MD5', async () => {
+            provider._lastRemoteMD5 = 'abc123';
+            const checksum = await provider.getRemoteFileChecksum();
+            expect(checksum).toBe('abc123');
+        });
+
+        it('should return null when no checksum available', async () => {
+            provider._lastRemoteMD5 = null;
+            const checksum = await provider.getRemoteFileChecksum();
+            expect(checksum).toBeNull();
+        });
+    });
+
+    describe('checksum', () => {
+        it('should return md5 hash for data', async () => {
+            const data = new ArrayBuffer(10);
+            md5FromArrayBuffer.mockResolvedValue('test-hash');
+
+            const result = await provider.checksum(data);
+            expect(result).toBe('test-hash');
+            expect(md5FromArrayBuffer).toHaveBeenCalledWith(data);
+        });
+
+        it('should return null on error', async () => {
+            const data = new ArrayBuffer(10);
+            md5FromArrayBuffer.mockRejectedValue(new Error('hash error'));
+
+            const result = await provider.checksum(data);
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('constructor validation', () => {
+        it('should throw error when fileId is missing', () => {
+            const invalidConfig = { accessToken: 'test-token' };
+            expect(() => new GoogleDriveV2Provider(invalidConfig)).toThrow('fileId and accessToken required for Google Drive v2');
+        });
+
+        it('should throw error when accessToken is missing', () => {
+            const invalidConfig = { fileId: 'test-id' };
+            expect(() => new GoogleDriveV2Provider(invalidConfig)).toThrow('fileId and accessToken required for Google Drive v2');
+        });
+
+        it('should set default pollIntervalMs', () => {
+            expect(provider.pollIntervalMs).toBe(8000);
+        });
+
+        it('should use custom pollIntervalMs', () => {
+            const customConfig = { fileId: 'test', accessToken: 'token', pollIntervalMs: 5000 };
+            const customProvider = new GoogleDriveV2Provider(customConfig);
+            expect(customProvider.pollIntervalMs).toBe(5000);
+        });
+    });
 });

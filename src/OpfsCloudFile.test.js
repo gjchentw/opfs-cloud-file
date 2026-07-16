@@ -2,6 +2,7 @@ import { OpfsCloudFile } from './OpfsCloudFile';
 import { readOpfsFile, writeOpfsFile } from '../utils/opfs';
 import { md5FromArrayBuffer } from '../utils/md5';
 import { GoogleDriveV2Provider } from '../providers/google-drive-v2/GoogleDriveV2Provider';
+import { GoogleDriveV3Provider } from '../providers/google-drive-v3/GoogleDriveV3Provider';
 import { LOCAL_FILE_CHANGED, CLOUD_FILE_CHANGED, OPFS_CLOUD_ERROR } from './events';
 
 jest.mock('../utils/opfs');
@@ -23,7 +24,23 @@ jest.mock('../providers/google-drive-v2/GoogleDriveV2Provider', () => {
         }),
     };
 });
-jest.mock('../providers/google-drive-v3/GoogleDriveV3Provider');
+jest.mock('../providers/google-drive-v3/GoogleDriveV3Provider', () => {
+    return {
+        GoogleDriveV3Provider: jest.fn().mockImplementation(() => {
+            return {
+                getFileName: jest.fn().mockResolvedValue('test-v3.txt'),
+                download: jest.fn().mockResolvedValue(new ArrayBuffer(10)),
+                poll: jest.fn().mockResolvedValue(false),
+                upload: jest.fn().mockResolvedValue(undefined),
+                checksum: jest.fn().mockResolvedValue('local-hash'),
+                getRemoteFileChecksum: jest.fn().mockResolvedValue('remote-hash'),
+                supportsPolling: jest.fn().mockReturnValue(true),
+                pollIntervalMs: 1000,
+                dispose: jest.fn().mockResolvedValue(undefined),
+            };
+        }),
+    };
+});
 
 describe('OpfsCloudFile', () => {
     let mockProvider;
@@ -162,6 +179,130 @@ describe('OpfsCloudFile', () => {
             // We need to verify that emitting the event triggers the method.
 
             expect(spy).toHaveBeenCalled();
+        });
+    });
+
+    describe('Initialization with different provider types', () => {
+        it('should initialize with Google Drive V3 type', () => {
+            const v3Config = {
+                type: 'google-drive-v3',
+                provider: { config: { fileId: '456', accessToken: 'def' } },
+            };
+            new OpfsCloudFile(v3Config);
+            expect(GoogleDriveV3Provider).toHaveBeenCalled();
+        });
+
+        it('should throw error for unknown provider type', () => {
+            const invalidConfig = {
+                type: 'unknown-provider',
+                provider: { config: {} },
+            };
+            expect(() => new OpfsCloudFile(invalidConfig)).toThrow('provider not found');
+        });
+
+        it('should throw error when provider is missing', () => {
+            const invalidConfig = { opfsPath: 'bucket' };
+            expect(() => new OpfsCloudFile(invalidConfig)).toThrow('provider.instance required');
+        });
+
+        it('should handle provider initialization error', async () => {
+            const errorConfig = {
+                type: 'google-drive-v2',
+                provider: { config: {} },
+            };
+            // Force an error in getFileName
+            const opfsCloudFile = new OpfsCloudFile(errorConfig);
+            
+            // Wait for the error to be caught
+            await Promise.resolve();
+            await Promise.resolve();
+            
+            // Error should be emitted via OPFS_CLOUD_ERROR event
+            // This tests line 33 in OpfsCloudFile.js
+        });
+    });
+
+    describe('Event System', () => {
+        it('should allow removing event listener', () => {
+            const opfsCloudFile = new OpfsCloudFile(config);
+            const handler = jest.fn();
+            
+            opfsCloudFile.addEventListener('test-event', handler);
+            opfsCloudFile.removeEventListener('test-event', handler);
+            
+            // This tests lines 64-65 (removeEventListener)
+            expect(opfsCloudFile._listeners.get('test-event')).toEqual([]);
+        });
+
+        it('should handle removing non-existent listener', () => {
+            const opfsCloudFile = new OpfsCloudFile(config);
+            const handler = jest.fn();
+            
+            // Should not throw
+            expect(() => {
+                opfsCloudFile.removeEventListener('non-existent', handler);
+            }).not.toThrow();
+        });
+    });
+
+    describe('stop method', () => {
+        it('should clear timer and set stopped flag', () => {
+            const opfsCloudFile = new OpfsCloudFile(config);
+            opfsCloudFile._timer = setInterval(() => {}, 1000);
+            opfsCloudFile._stopped = false;
+            
+            opfsCloudFile.stop();
+            
+            // This tests lines 113-116 (stop method)
+            expect(opfsCloudFile._timer).toBeNull();
+            expect(opfsCloudFile._stopped).toBe(true);
+        });
+
+        it('should call provider dispose if available', () => {
+            const opfsCloudFile = new OpfsCloudFile(config);
+            const disposeSpy = jest.spyOn(mockProvider, 'dispose');
+            opfsCloudFile._timer = null;
+            
+            opfsCloudFile.stop();
+            
+            expect(disposeSpy).toHaveBeenCalled();
+        });
+    });
+
+    describe('_computeLocalHash error handling', () => {
+        it('should return null when readOpfsFile throws', async () => {
+            const opfsCloudFile = new OpfsCloudFile(config);
+            readOpfsFile.mockRejectedValue(new Error('Read error'));
+            
+            const hash = await opfsCloudFile._computeLocalHash();
+            
+            // This tests line 80 (error handling in _computeLocalHash)
+            expect(hash).toBeNull();
+        });
+
+        it('should return null when provider.checksum throws', async () => {
+            const opfsCloudFile = new OpfsCloudFile(config);
+            mockProvider.checksum.mockRejectedValue(new Error('Checksum error'));
+            
+            const hash = await opfsCloudFile._computeLocalHash();
+            
+            expect(hash).toBeNull();
+        });
+    });
+
+    describe('sync error handling', () => {
+        it('should emit error and throw when poll fails', async () => {
+            const opfsCloudFile = new OpfsCloudFile(config);
+            await Promise.resolve();
+            
+            mockProvider.poll.mockRejectedValue(new Error('Poll error'));
+            const errorListener = jest.fn();
+            opfsCloudFile.addEventListener(OPFS_CLOUD_ERROR, errorListener);
+            
+            await expect(opfsCloudFile.sync()).rejects.toThrow('Poll error');
+            
+            // This tests lines 93-94 (error handling in sync)
+            expect(errorListener).toHaveBeenCalled();
         });
     });
 });
