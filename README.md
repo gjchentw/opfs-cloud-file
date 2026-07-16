@@ -133,3 +133,42 @@ class MyCloudProvider extends BaseCloudProvider {
 }
 ```
 
+## Release Process
+
+This project follows Semantic Versioning (SemVer) 2.0.0. Pre-release versions (alpha, beta, rc) are **OPTIONAL** and not mandatory for the release workflow.
+
+### Release Requirements
+
+- **CHANGELOG.md is REQUIRED** - All releases must include a CHANGELOG.md file documenting the changes
+- **Version Consistency** - The git tag version must match the package.json version exactly
+- **All Tests Must Pass** - All tests with coverage must pass before release
+- **Coverage Thresholds** - Minimum 80% coverage for statements, branches, functions, and lines
+
+### Publishing
+
+Releases are automatically published to npm when a new version tag is pushed to the repository. The publish workflow performs the following validations:
+
+1. Validates entry points (ESM, UMD, TypeScript declarations)
+2. Verifies CHANGELOG.md exists
+3. Verifies version consistency between git tag and package.json
+4. Runs all tests with coverage
+5. Validates coverage thresholds (80% minimum for statements, branches, functions, lines)
+6. Validates package contents for errors, sensitive files, and unnecessary files
+7. Scans for credentials in repository
+8. Builds the package
+9. Publishes to npm registry with fail-closed behavior
+
+### Safe Publishing Verification
+
+To verify the publishing process **WITHOUT** actually publishing, use the Verify Publish workflow:
+
+```bash
+# Manually trigger verification
+gh workflow run verify-publish
+
+# Or use npm publish --dry-run locally
+npm publish --dry-run
+```
+
+**IMPORTANT**: Never use actual `npm publish` for verification or testing. Always use `npm publish --dry-run` to prevent accidental production releases.
+

@@ -1,0 +1,70 @@
+# Dependencies
+node_modules/
+
+# Build output (if not in dist)
+*.js.map
+
+# Config files
+babel.config.json
+jest.config.cjs
+vite.config.js
+tsconfig.json
+.eslintrc*
+.prettierrc*
+
+# IDE and editor files
+.idea/
+.vscode/
+.vibe/
+
+# Git files
+.git/
+.gitignore
+
+# OpenSpec
+openspec/
+
+# Test files
+*.test.js
+*.spec.js
+__tests__/
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Logs
+*.log
+*.err
+
+# Environment files
+.env*
+.env
+
+# Keys and certificates
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+
+# Credential files
+credentials.json
+secrets.json
+config.json
+auth.json
+tokens.json
+
+# Build artifacts
+*.tsbuildinfo
+
+# Temporary files
+.DS_Store
+*.tmp
+*.temp
+
+# Documentation (kept in repo but not published)
+CHANGELOG.md
+README.md
+LICENSE.md
+CONTRIBUTING.md

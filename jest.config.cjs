@@ -1,5 +1,6 @@
 /** Jest configuration */
 module.exports = {
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
   testEnvironment: "jsdom",
   transform: {
     "^.+\\.[t|j]sx?$": "babel-jest",
@@ -7,6 +8,7 @@ module.exports = {
   transformIgnorePatterns: ["/node_modules/(?!opfs-cloud-file)"],
   // Coverage configuration
   collectCoverage: true,
+  collectCoverageFrom: ["src/**/*.{js,jsx,ts,tsx}", "providers/**/*.{js,jsx,ts,tsx}", "index.js"],
   coverageDirectory: "coverage",
   coverageReporters: ["text", "lcov"],
   coverageThreshold: {
