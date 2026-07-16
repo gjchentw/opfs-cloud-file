@@ -1,6 +1,16 @@
 import { BaseCloudProvider } from '../BaseCloudProvider.js';
 import { md5FromArrayBuffer } from '../../utils/md5.js';
 
+const GOOGLE_APPS_TYPE_NAMES = {
+  'application/vnd.google-apps.document': 'Google Docs',
+  'application/vnd.google-apps.spreadsheet': 'Google Sheets',
+  'application/vnd.google-apps.presentation': 'Google Slides',
+  'application/vnd.google-apps.drawing': 'Google Drawings',
+  'application/vnd.google-apps.form': 'Google Forms',
+  'application/vnd.google-apps.script': 'Google Apps Script',
+  'application/vnd.google-apps.site': 'Google Sites',
+  'application/vnd.google-apps.map': 'Google My Maps',
+};
 
 export class GoogleDriveV2Provider extends BaseCloudProvider {
   constructor(config) {
@@ -30,7 +40,12 @@ export class GoogleDriveV2Provider extends BaseCloudProvider {
 
   async download() {
     if (this._meta.mimeType.startsWith('application/vnd.google-apps')) {
-      throw new Error('not a downloadable file');
+      const typeName = GOOGLE_APPS_TYPE_NAMES[this._meta.mimeType] || 'Google Apps';
+      throw new Error(
+        `Cannot download this file: it is a ${typeName} file (${this._meta.mimeType}), ` +
+        'which is not downloadable as binary content. ' +
+        'Use the Google Drive web interface to export it to a standard format.'
+      );
     }
 
     const url = `https://www.googleapis.com/drive/v2/files/${encodeURIComponent(this.fileId)}?alt=media`;
@@ -70,6 +85,12 @@ export class GoogleDriveV2Provider extends BaseCloudProvider {
 
   async getRemoteFileChecksum() {
     return this._lastRemoteMD5;
+  }
+
+  async getRemoteModifiedTime() {
+    if (!this._meta || !this._meta.modifiedDate) return null;
+    const ts = Date.parse(this._meta.modifiedDate);
+    return Number.isNaN(ts) ? null : ts;
   }
 
   async checksum(data) {

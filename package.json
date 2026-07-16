@@ -1,7 +1,7 @@
 {
   "name": "opfs-cloud-file",
   "description": "Map a cloud file to OPFS with polling providers.",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "author": "gjchen <gjchentw@gmail.com>",
   "license": "MIT",
   "repository": {
@@ -49,5 +49,8 @@
     "typescript": "~5.9.3",
     "vite": "^7.2.2",
     "vite-plugin-dts": "^4.5.4"
+  },
+  "dependencies": {
+    "spark-md5": "^3.0.2"
   }
 }

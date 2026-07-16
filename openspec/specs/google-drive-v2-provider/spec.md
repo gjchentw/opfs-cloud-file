@@ -221,14 +221,14 @@ The Google Drive V2 Provider SHALL download file content from Google Drive.
 
 The `download()` method SHALL:
 - Check if the file is a Google Apps file by examining `_meta.mimeType`
-- If the mimeType starts with `application/vnd.google-apps.`, throw an error 'not a downloadable file'
+- If the mimeType starts with `application/vnd.google-apps.`, throw an error with an **enhanced error message** containing the file type name (e.g., 'Google Docs'), an explanation (not downloadable as binary content), and an actionable suggestion (use the Google Drive web interface to export)
 - Construct the download URL as `https://www.googleapis.com/drive/v2/files/{fileId}?alt=media`
 - Send a GET request with the Authorization header: `Bearer {accessToken}`
 - If the response is not OK, throw an error with the status code
 - Return the response as an ArrayBuffer
 
-**Implementation**: `providers/google-drive-v2/GoogleDriveV2Provider.js:31-40`
-**Verification**: Unit tests for file download
+**Implementation**: `providers/google-drive-v2/GoogleDriveV2Provider.js:41-55`
+**Verification**: Unit tests for file download with enhanced error messages
 
 ```mermaid
 sequenceDiagram
@@ -237,7 +237,8 @@ sequenceDiagram
     
     Provider->>Provider: Check mimeType
     alt Is Google Apps file
-        Provider-->>Provider: Throw Error: not a downloadable file
+        Provider->>Provider: Create enhanced error
+        Provider-->>Provider: Throw Error with guidance
     else Is downloadable
         Provider->>GoogleDriveAPI: GET /drive/v2/files/{fileId}?alt=media
         Note over Provider,GoogleDriveAPI: Headers: Authorization: Bearer {accessToken}
@@ -249,11 +250,15 @@ sequenceDiagram
         end
     end
 ```
-*Caption: File download sequence with Google Apps file detection and error handling*
+*Caption: File download sequence with enhanced Google Apps file error handling*
 
 #### Scenario: Download file content successfully
 - **WHEN** `provider.download()` is called with valid fileId and accessToken
 - **THEN** system makes GET request to Google Drive API v2 with alt=media and returns ArrayBuffer
+
+#### Scenario: Download non-Google Apps file successfully
+- **WHEN** `provider.download()` is called for non-Google Apps file
+- **THEN** system downloads and returns ArrayBuffer as before
 
 #### Scenario: Download with correct URL
 - **WHEN** `provider.download()` is called with fileId 'test-file-id'
@@ -263,11 +268,15 @@ sequenceDiagram
 - **WHEN** `provider.download()` is called with accessToken 'test-token'
 - **THEN** system includes header `Authorization: Bearer test-token` in the request
 
-#### Scenario: Throw error for Google Apps files
+#### Scenario: Throw enhanced error for Google Apps files
 - **WHEN** `provider.download()` is called and _meta.mimeType is 'application/vnd.google-apps.document'
-- **THEN** system throws error with message 'not a downloadable file'
+- **THEN** system throws error with message containing file type, explanation, and suggestion
 
-#### Scenario: Download error handling
+#### Scenario: Enhanced error message format
+- **WHEN** download fails for Google Apps file
+- **THEN** error message includes: file type (e.g., 'Google Docs'), reason (not downloadable as binary), and suggestion (use Google Drive web interface to export)
+
+#### Scenario: Download error handling for API errors
 - **WHEN** Google Drive API returns non-OK response with status 500
 - **THEN** system throws error with message 'download failed: 500'
 
@@ -579,7 +588,7 @@ sequenceDiagram
 | Polling Support | `providers/google-drive-v2/GoogleDriveV2Provider.js:16` | Unit tests for polling support |
 | Metadata Fetching | `providers/google-drive-v2/GoogleDriveV2Provider.js:18-24` | Unit tests for metadata fetching |
 | File Name Retrieval | `providers/google-drive-v2/GoogleDriveV2Provider.js:26-29` | Unit tests for file name retrieval |
-| File Download | `providers/google-drive-v2/GoogleDriveV2Provider.js:31-40` | Unit tests for file download |
+| File Download | `providers/google-drive-v2/GoogleDriveV2Provider.js:41-55` | Unit tests for enhanced error messages |
 | File Upload | `providers/google-drive-v2/GoogleDriveV2Provider.js:42-57` | Unit tests for file upload |
 | Change Polling | `providers/google-drive-v2/GoogleDriveV2Provider.js:59-69` | Unit tests for change polling |
 | Remote File Checksum | `providers/google-drive-v2/GoogleDriveV2Provider.js:71-73` | Unit tests for remote checksum |
@@ -590,7 +599,7 @@ sequenceDiagram
 
 ---
 
-*Document Version: 1.0.0*  
+*Document Version: 1.1.0*  
 *Last Updated: 2026-07-16*  
 *Status: Draft*  
 *Author: Mistral Vibe*  

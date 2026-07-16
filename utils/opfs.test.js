@@ -1,4 +1,4 @@
-import { readOpfsFile, writeOpfsFile, mkdir } from './opfs';
+import { readOpfsFile, writeOpfsFile, getOpfsFileLastModified, mkdir } from './opfs';
 
 describe('utils/opfs', () => {
     let mockRoot;
@@ -89,6 +89,52 @@ describe('utils/opfs', () => {
             const result = await readOpfsFile('test.txt');
             expect(result).toBeNull();
         });
+
+        it('should read file from a nested folder path', async () => {
+            const mockFile = {
+                arrayBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(8)),
+            };
+            mockFileHandle.getFile.mockResolvedValue(mockFile);
+
+            const result = await readOpfsFile('bucket/test.txt');
+
+            expect(mockRoot.getDirectoryHandle).toHaveBeenCalledWith('bucket');
+            expect(mockDirectoryHandle.getFileHandle).toHaveBeenCalledWith('test.txt');
+            expect(result).toBeInstanceOf(ArrayBuffer);
+        });
+
+        it('should return null when a folder in the path does not exist', async () => {
+            mockRoot.getDirectoryHandle.mockRejectedValue(new Error('Directory not found'));
+            const result = await readOpfsFile('missing/test.txt');
+            expect(result).toBeNull();
+        });
+
+        it('should track sync access handle in tracker and remove it after close', async () => {
+            mockFileHandle.createSyncAccessHandle = jest.fn().mockResolvedValue(mockSyncAccessHandle);
+            mockSyncAccessHandle.getSize.mockReturnValue(8);
+
+            const tracker = new Set();
+            const addSpy = jest.spyOn(tracker, 'add');
+            const deleteSpy = jest.spyOn(tracker, 'delete');
+
+            await readOpfsFile('test.txt', tracker);
+
+            expect(addSpy).toHaveBeenCalledWith(mockSyncAccessHandle);
+            expect(deleteSpy).toHaveBeenCalledWith(mockSyncAccessHandle);
+            expect(tracker.size).toBe(0);
+        });
+
+        it('should remove handle from tracker even when read throws', async () => {
+            mockFileHandle.createSyncAccessHandle = jest.fn().mockResolvedValue(mockSyncAccessHandle);
+            mockSyncAccessHandle.getSize.mockImplementation(() => { throw new Error('read error'); });
+
+            const tracker = new Set();
+            const result = await readOpfsFile('test.txt', tracker);
+
+            expect(result).toBeNull();
+            expect(mockSyncAccessHandle.close).toHaveBeenCalled();
+            expect(tracker.size).toBe(0);
+        });
     });
 
     describe('writeOpfsFile', () => {
@@ -115,6 +161,50 @@ describe('utils/opfs', () => {
             expect(mockSyncAccessHandle.write).toHaveBeenCalledWith(buffer, { at: 0 });
             expect(mockSyncAccessHandle.flush).toHaveBeenCalled();
             expect(mockSyncAccessHandle.close).toHaveBeenCalled();
+        });
+
+        it('should track sync access handle in tracker and remove it after close', async () => {
+            const buffer = new ArrayBuffer(8);
+            mockFileHandle.createSyncAccessHandle = jest.fn().mockResolvedValue(mockSyncAccessHandle);
+
+            const tracker = new Set();
+            const addSpy = jest.spyOn(tracker, 'add');
+            const deleteSpy = jest.spyOn(tracker, 'delete');
+
+            await writeOpfsFile('test.txt', buffer, tracker);
+
+            expect(addSpy).toHaveBeenCalledWith(mockSyncAccessHandle);
+            expect(deleteSpy).toHaveBeenCalledWith(mockSyncAccessHandle);
+            expect(tracker.size).toBe(0);
+        });
+    });
+
+    describe('getOpfsFileLastModified', () => {
+        it('should return lastModified of a file in the root', async () => {
+            mockFileHandle.getFile.mockResolvedValue({ lastModified: 12345 });
+
+            const result = await getOpfsFileLastModified('test.txt');
+
+            expect(mockRoot.getFileHandle).toHaveBeenCalledWith('test.txt');
+            expect(result).toBe(12345);
+        });
+
+        it('should return lastModified of a file in a nested folder', async () => {
+            mockFileHandle.getFile.mockResolvedValue({ lastModified: 67890 });
+
+            const result = await getOpfsFileLastModified('folder/test.txt');
+
+            expect(mockRoot.getDirectoryHandle).toHaveBeenCalledWith('folder');
+            expect(mockDirectoryHandle.getFileHandle).toHaveBeenCalledWith('test.txt');
+            expect(result).toBe(67890);
+        });
+
+        it('should return null when the file does not exist', async () => {
+            mockRoot.getFileHandle.mockRejectedValue(new Error('File not found'));
+
+            const result = await getOpfsFileLastModified('missing.txt');
+
+            expect(result).toBeNull();
         });
     });
 

@@ -34,6 +34,10 @@ const client = google.accounts.oauth2.initTokenClient({
     });
 
     worker.onmessage = (e) => {
+      if (e.data && e.data.type === 'opfs-event') {
+        // Re-emit worker events locally for consumers
+        window.dispatchEvent(new CustomEvent(e.data.eventType, { detail: e.data.detail }));
+      }
       console.log('Message from worker:', e.data);
     };
   }

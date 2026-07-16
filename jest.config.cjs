@@ -3,7 +3,18 @@ module.exports = {
   setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
   testEnvironment: "jsdom",
   transform: {
-    "^.+\\.[t|j]sx?$": "babel-jest",
+    "^.+\\.tsx?$": [
+      "ts-jest",
+      {
+        tsconfig: {
+          module: "CommonJS",
+          moduleResolution: "node",
+          verbatimModuleSyntax: false,
+          allowJs: true,
+        },
+      },
+    ],
+    "^.+\\.jsx?$": "babel-jest",
   },
   transformIgnorePatterns: ["/node_modules/(?!opfs-cloud-file)"],
   // Coverage configuration

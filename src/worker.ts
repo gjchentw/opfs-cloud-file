@@ -1,4 +1,4 @@
-import { OpfsCloudFile } from '../index';
+import { OpfsCloudFile, events } from '../index';
 
 self.onmessage = (e: MessageEvent) => {
     const { type, config } = e.data;
@@ -15,8 +15,12 @@ self.onmessage = (e: MessageEvent) => {
                 },
             });
 
-            // Forward events to main thread if needed, or just log for now
-            // cloudFile.addEventListener('some-event', (detail) => self.postMessage({ type: 'event', detail }));
+            // Forward all events to the main thread
+            for (const eventType of Object.values(events)) {
+                cloudFile.addEventListener(eventType, (event: { detail: unknown }) => {
+                    self.postMessage({ type: 'opfs-event', eventType, detail: event.detail });
+                });
+            }
 
             console.log('OpfsCloudFile initialized in worker', cloudFile);
 

@@ -57,9 +57,53 @@ describe('GoogleDriveV2Provider', () => {
             expect(buffer).toBeInstanceOf(ArrayBuffer);
         });
 
-        it('should throw if file is not downloadable (Google Apps)', async () => {
+        it('should throw enhanced error if file is not downloadable (Google Apps)', async () => {
             provider._meta = { mimeType: 'application/vnd.google-apps.document' };
-            await expect(provider.download()).rejects.toThrow('not a downloadable file');
+            const err = await provider.download().then(
+                () => { throw new Error('expected download to reject'); },
+                (e) => e
+            );
+            // File type
+            expect(err.message).toContain('Google Docs');
+            expect(err.message).toContain('application/vnd.google-apps.document');
+            // Explanation
+            expect(err.message).toContain('not downloadable as binary');
+            // Actionable suggestion
+            expect(err.message).toContain('Google Drive web interface to export');
+        });
+
+        it('should use generic type name for unknown Google Apps mimeType', async () => {
+            provider._meta = { mimeType: 'application/vnd.google-apps.unknown' };
+            await expect(provider.download()).rejects.toThrow('Google Apps file');
+        });
+
+        it('should throw error on API failure status', async () => {
+            provider._meta = { mimeType: 'text/plain' };
+            global.fetch.mockResolvedValue({ ok: false, status: 500 });
+            await expect(provider.download()).rejects.toThrow('download failed: 500');
+        });
+    });
+
+    describe('getRemoteModifiedTime', () => {
+        it('should return parsed timestamp from modifiedDate', async () => {
+            provider._meta = { modifiedDate: '2026-07-16T00:00:00.000Z' };
+            const ts = await provider.getRemoteModifiedTime();
+            expect(ts).toBe(Date.parse('2026-07-16T00:00:00.000Z'));
+        });
+
+        it('should return null when metadata is missing', async () => {
+            provider._meta = null;
+            expect(await provider.getRemoteModifiedTime()).toBeNull();
+        });
+
+        it('should return null when modifiedDate is missing', async () => {
+            provider._meta = {};
+            expect(await provider.getRemoteModifiedTime()).toBeNull();
+        });
+
+        it('should return null when modifiedDate is invalid', async () => {
+            provider._meta = { modifiedDate: 'not-a-date' };
+            expect(await provider.getRemoteModifiedTime()).toBeNull();
         });
     });
 

@@ -1,11 +1,18 @@
-export async function readOpfsFile(path) {
+export async function readOpfsFile(path, tracker) {
   try {
     const root = await navigator.storage.getDirectory();
-    const handle = await root.getFileHandle(path);
+    const folders = path.split('/').filter((f) => f.length);
+    const filename = folders.pop();
+    let place = root;
+    for (const folder of folders) {
+      place = await place.getDirectoryHandle(folder);
+    }
+    const handle = await place.getFileHandle(filename);
 
     // Worker support: sync access handle
     if (handle.createSyncAccessHandle) {
       const accessHandle = await handle.createSyncAccessHandle();
+      if (tracker) tracker.add(accessHandle);
       try {
         const size = accessHandle.getSize();
         const buffer = new ArrayBuffer(size);
@@ -13,6 +20,7 @@ export async function readOpfsFile(path) {
         return buffer;
       } finally {
         accessHandle.close();
+        if (tracker) tracker.delete(accessHandle);
       }
     }
 
@@ -23,7 +31,7 @@ export async function readOpfsFile(path) {
   }
 }
 
-export async function writeOpfsFile(path, buffer) {
+export async function writeOpfsFile(path, buffer, tracker) {
   const root = await navigator.storage.getDirectory();
   const folders = path.split('/').filter((f) => f.length);
   const filename = folders.pop();
@@ -33,12 +41,14 @@ export async function writeOpfsFile(path, buffer) {
   // Worker support: sync access handle
   if (handle.createSyncAccessHandle) {
     const accessHandle = await handle.createSyncAccessHandle();
+    if (tracker) tracker.add(accessHandle);
     try {
       accessHandle.truncate(0);
       accessHandle.write(buffer, { at: 0 });
       accessHandle.flush();
     } finally {
       accessHandle.close();
+      if (tracker) tracker.delete(accessHandle);
     }
     return;
   }
@@ -46,6 +56,23 @@ export async function writeOpfsFile(path, buffer) {
   const writable = await handle.createWritable();
   await writable.write(buffer);
   await writable.close();
+}
+
+export async function getOpfsFileLastModified(path) {
+  try {
+    const root = await navigator.storage.getDirectory();
+    const folders = path.split('/').filter((f) => f.length);
+    const filename = folders.pop();
+    let place = root;
+    for (const folder of folders) {
+      place = await place.getDirectoryHandle(folder);
+    }
+    const handle = await place.getFileHandle(filename);
+    const file = await handle.getFile();
+    return file.lastModified;
+  } catch (e) {
+    return null;
+  }
 }
 
 export async function mkdir(on, folders) {

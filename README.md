@@ -37,6 +37,10 @@ const config = {
       accessToken: 'YOUR_ACCESS_TOKEN',
     },
   },
+  // Optional: error recovery configuration (defaults shown)
+  maxRetries: 3,        // Retry attempts for transient errors
+  retryDelayMs: 1000,   // Base delay between retries
+  backoffMultiplier: 2, // Exponential backoff multiplier
 };
 
 // Initialize OpfsCloudFile
@@ -52,6 +56,11 @@ cloudFile.addEventListener('opfs-cloud-error', (event) => {
   console.error('Sync error:', event.detail);
 });
 
+// Listen for conflicts that need manual resolution
+cloudFile.addEventListener('conflict-detected', (event) => {
+  console.warn('Sync conflict:', event.detail);
+});
+
 // Start syncing (happens automatically on init, but you can trigger manually)
 // cloudFile.sync();
 
@@ -62,6 +71,85 @@ function onFileSaved() {
 }
 
 ```
+
+## Error Recovery (Retry)
+
+Transient errors are retried automatically with exponential backoff. The retry
+behavior is configurable via the `OpfsCloudFile` constructor options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `maxRetries` | `3` | Maximum number of retry attempts |
+| `retryDelayMs` | `1000` | Base delay between retries in milliseconds |
+| `backoffMultiplier` | `2` | Multiplier for exponential backoff |
+| `retryableErrors` | `null` | Custom list of retryable errors (HTTP status codes and/or the string `'network'`) |
+
+The wait before retry attempt *n* is `retryDelayMs * backoffMultiplier^n`
+(1s, 2s, 4s with the defaults).
+
+By default the following errors are retried:
+
+- **Network errors** (e.g. `fetch` failures with no HTTP status)
+- **429** Too Many Requests (rate limiting)
+- **500–599** server errors
+
+These errors are **not** retried and fail immediately:
+
+- **401** Unauthorized, **403** Forbidden, **404** Not Found (and other 4xx)
+
+An `opfs-cloud-error` event is emitted only after all retries are exhausted
+(or immediately for non-retryable errors).
+
+## Conflict Resolution
+
+When both the local file and the remote file have changed since the last sync,
+the conflict is resolved by comparing modification timestamps:
+
+- **Local timestamp newer** → local changes are uploaded (local wins)
+- **Remote timestamp newer** → remote changes are downloaded (remote wins)
+- **Timestamps equal** → a `conflict-detected` event is emitted for manual resolution
+- **Timestamps unavailable** → falls back to last-write-wins (local wins)
+
+### The `conflict-detected` Event
+
+```javascript
+cloudFile.addEventListener('conflict-detected', (event) => {
+  const {
+    localChecksum,   // MD5 of the local file
+    remoteChecksum,  // MD5 of the remote file
+    localTimestamp,  // Local modification time (ms since epoch)
+    remoteTimestamp, // Remote modification time (ms since epoch)
+    fileName,        // Name of the conflicting file
+  } = event.detail;
+  // Resolve manually, e.g. by keeping one side or merging
+});
+```
+
+## Events
+
+| Event | When | Detail |
+|-------|------|--------|
+| `local-file-changed` | Dispatched by *you* after modifying the local file | — |
+| `cloud-file-changed` | The remote file changed (detected by polling) | `{ reason, remoteHash }` |
+| `opfs-cloud-error` | A sync operation failed (after retries) | `{ error }` or `{ warning: true, failures }` for resource-cleanup warnings |
+| `conflict-detected` | Local and remote changed with equal timestamps | `{ localChecksum, remoteChecksum, localTimestamp, remoteTimestamp, fileName }` |
+
+When running inside a Web Worker, all events are forwarded to the main thread
+via `postMessage` using the format
+`{ type: 'opfs-event', eventType: string, detail: object }`.
+
+## Resource Management
+
+Open OPFS access handles are tracked internally and closed automatically when
+`stop()` is called. You can also trigger cleanup explicitly:
+
+```javascript
+cloudFile.cleanup(); // Close all tracked OPFS access handles
+cloudFile.stop();    // Stop polling, clean up handles, dispose the provider
+```
+
+If any handle fails to close, a warning is logged and an `opfs-cloud-error`
+event is emitted with `{ warning: true, failures }`.
 
 ## Contributing New Providers
 
@@ -124,6 +212,15 @@ class MyCloudProvider extends BaseCloudProvider {
     // ...
   }
   
+  /**
+   * Optional: Returns the remote file's modification time (ms since epoch).
+   * Used for conflict resolution; return null when unavailable.
+   * @returns {Promise<number | null>}
+   */
+  async getRemoteModifiedTime() {
+    // ...
+  }
+
   /**
    * Clean up resources.
    */
