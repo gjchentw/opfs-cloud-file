@@ -21,6 +21,7 @@ The infrastructure specification (`openspec/specs/infrastructure/spec.md`) defin
 - Must preserve existing validation scripts
 - Must support semantic versioning tag pattern (`v*`)
 - Must enforce fail-closed behavior (no partial publishing)
+- Must use Node.js 24.x (Node.js 20 is deprecated on GitHub Actions runners)
 
 ## Goals / Non-Goals
 
@@ -104,6 +105,26 @@ The infrastructure specification (`openspec/specs/infrastructure/spec.md`) defin
 - Reduces workflow count and maintenance burden
 - Single source of truth for publishing logic
 
+### Decision 6: Node.js Version Update to 24.x
+**Chosen**: Update all workflows and specifications from Node.js 20.x to Node.js 24.x.
+
+**Rationale**:
+- GitHub Actions has deprecated Node.js 20 on their runners (as of 2025-09-19)
+- Workflows using Node.js 20 are forced to run on Node.js 24, causing version mismatches
+- Node.js 24 is the current LTS and recommended version for GitHub Actions
+- Ensures compatibility with current GitHub Actions infrastructure
+- Reference: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+
+**Implementation**: Update node-version from '20.x' to '24.x' in:
+- `.github/workflows/publish.yml`
+- `.github/workflows/test.yml`
+- `.github/workflows/build.yml`
+- Infrastructure specification (`openspec/specs/infrastructure/spec.md`)
+
+**Alternatives Considered**:
+- Keep Node.js 20: Will cause deprecation warnings and may break in future
+- Use Node.js 22: Intermediate version, but 24 is current LTS
+
 ## Risks / Trade-offs
 
 ### Risk: Trigger Mechanism Change
@@ -122,6 +143,10 @@ The infrastructure specification (`openspec/specs/infrastructure/spec.md`) defin
 **Risk**: The workflow uses `NODE_AUTH_TOKEN` secret for publishing. If validation steps fail, the secret is still exposed in logs.
 **Mitigation**: This is inherent to GitHub Actions; the specification's Safe Publishing requirement is about not using actual publish for verification, which we address by ensuring validation steps don't perform actual publish.
 
+### Risk: Node.js 24 Compatibility
+**Risk**: Project dependencies or code may not be fully compatible with Node.js 24.x, causing build or test failures.
+**Mitigation**: Test project on Node.js 24 locally before deploying to CI/CD. All dependencies should be compatible with Node.js 24 as it's the current LTS. If issues are found, update dependencies or polyfill as needed.
+
 ## Migration Plan
 
 ### Phase 1: Preparation
@@ -131,8 +156,10 @@ The infrastructure specification (`openspec/specs/infrastructure/spec.md`) defin
 
 ### Phase 2: Implementation
 1. Create new unified `publish.yml` with corrected trigger and validation logic
-2. Delete `verify-publish.yml`
-3. Commit changes to repository
+2. Update all workflows (`publish.yml`, `test.yml`, `build.yml`) to use Node.js 24.x
+3. Update infrastructure specification to reference Node.js 24.x
+4. Delete `verify-publish.yml`
+5. Commit changes to repository
 
 ### Phase 3: Validation
 1. Push a test tag (e.g., `v0.1.6-test`) to verify workflow triggers correctly

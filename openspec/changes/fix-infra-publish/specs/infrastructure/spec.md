@@ -12,7 +12,7 @@ The CI/CD pipeline SHALL execute on push and pull_request events to all branches
 
 The CI/CD pipeline SHALL use ubuntu-latest as the execution environment.
 
-The CI/CD pipeline SHALL setup Node.js 20.x environment for all jobs.
+The CI/CD pipeline SHALL setup Node.js 24.x environment for all jobs.
 
 The CI/CD pipeline SHALL install dependencies using `npm ci` for reproducible builds.
 
@@ -26,7 +26,7 @@ The CI/CD pipeline SHALL use a single unified workflow for both validation and p
 ```mermaid
 flowchart TD
     A[Tag Push: v*] --> B[Checkout repository]
-    B --> C[Setup Node.js 20.x]
+    B --> C[Setup Node.js 24.x]
     C --> D[npm ci]
     D --> E[Run Tests with Coverage]
     E --> F[Validate Coverage Thresholds]
@@ -60,6 +60,37 @@ flowchart TD
 #### Scenario: Previous verify-publish.yml workflow is removed
 - **WHEN** the change is implemented
 - **THEN** .github/workflows/verify-publish.yml no longer exists
+
+---
+
+### Requirement: Testing System Configuration
+
+The project SHALL use Jest 30.x as the primary testing framework.
+
+The testing system SHALL configure jsdom environment for DOM-related tests.
+
+The testing system SHALL transform source code using Babel with @babel/preset-env.
+
+The testing system SHALL run on Node.js 24.x environment.
+
+The testing system SHALL support asynchronous test execution.
+
+The testing system SHALL output Jest text coverage report to stdout.
+
+The testing system SHALL generate LCOV coverage report at `coverage/lcov.info`.
+
+**Implementation**: jest.config.cjs, babel.config.json, .github/workflows/test.yml
+**Verification**: npm test -- --coverage
+
+**Modified**: Updated from Node.js 20.x to Node.js 24.x to align with GitHub Actions runner deprecation of Node.js 20.
+
+#### Scenario: Tests execute on Node.js 24.x
+- **WHEN** `npm test` is executed in Node.js 24.x environment
+- **THEN** all defined tests run and complete successfully
+
+#### Scenario: jsdom environment available on Node.js 24.x
+- **WHEN** tests requiring DOM APIs are executed on Node.js 24.x
+- **THEN** jsdom environment provides necessary DOM APIs
 
 ---
 

@@ -8,9 +8,12 @@
 
 - [x] 2.1 Create new `.github/workflows/publish.yml` with tag-based trigger
 - [x] 2.2 Configure trigger on `push: tags` with pattern `v*`
-- [x] 2.3 Set up ubuntu-latest runner and Node.js 20.x environment
-- [x] 2.4 Configure OIDC authentication for npm registry access
-- [x] 2.5 Add npm ci step for dependency installation
+- [x] 2.3 Set up ubuntu-latest runner and Node.js 24.x environment
+- [x] 2.4 Update `.github/workflows/test.yml` to use Node.js 24.x
+- [x] 2.5 Update `.github/workflows/build.yml` to use Node.js 24.x
+- [x] 2.6 Configure OIDC authentication for npm registry access
+- [x] 2.7 Add npm ci step for dependency installation
+- [x] 2.8 Update main infrastructure spec to use Node.js 24.x
 
 ## 3. Implement Validation Steps
 

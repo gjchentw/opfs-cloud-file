@@ -55,7 +55,7 @@ The testing system SHALL configure jsdom environment for DOM-related tests.
 
 The testing system SHALL transform source code using Babel with @babel/preset-env.
 
-The testing system SHALL run on Node.js 20.x environment.
+The testing system SHALL run on Node.js 24.x environment.
 
 The testing system SHALL support asynchronous test execution.
 
@@ -171,7 +171,7 @@ The CI/CD pipeline SHALL execute on push and pull_request events to all branches
 
 The CI/CD pipeline SHALL use ubuntu-latest as the execution environment.
 
-The CI/CD pipeline SHALL setup Node.js 20.x environment for all jobs.
+The CI/CD pipeline SHALL setup Node.js 24.x environment for all jobs.
 
 The CI/CD pipeline SHALL install dependencies using `npm ci` for reproducible builds.
 
@@ -188,7 +188,7 @@ sequenceDiagram
     Dev->>GH: push code / create PR
     GH->>GA: Trigger workflow
     GA->>GA: Checkout repository
-    GA->>GA: Setup Node.js 20.x
+    GA->>GA: Setup Node.js 24.x
     GA->>GA: npm ci (install deps)
     GA->>GA: npm test (run tests)
     alt build workflow
