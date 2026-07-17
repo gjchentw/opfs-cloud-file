@@ -16,7 +16,7 @@ The CI/CD pipeline SHALL setup Node.js 24.x environment for all jobs.
 
 The CI/CD pipeline SHALL install dependencies using `npm ci` for reproducible builds.
 
-The CI/CD pipeline SHALL trigger the publish workflow on push events for tags matching the pattern `v*` (semantic version tags).
+The CI/CD pipeline SHALL trigger the publish workflow on push events for tags matching the pattern `v?[0-9]+.[0-9]+.[0-9]*` (semantic version tags with optional v prefix).
 
 The CI/CD pipeline SHALL use a single unified workflow for both validation and publishing to eliminate redundancy.
 
@@ -25,7 +25,7 @@ The CI/CD pipeline SHALL use a single unified workflow for both validation and p
 
 ```mermaid
 flowchart TD
-    A[Tag Push: v*] --> B[Checkout repository]
+    A[Tag Push: v?[0-9]+.[0-9]+.[0-9]*] --> B[Checkout repository]
     B --> C[Setup Node.js 24.x]
     C --> D[npm ci]
     D --> E[Run Tests with Coverage]
@@ -45,12 +45,16 @@ flowchart TD
 ```
 *Caption: Unified publish workflow with fail-closed behavior and comprehensive validation*
 
-#### Scenario: Publish workflow triggers on version tag push
-- **WHEN** a git tag matching pattern `v*` is pushed to the repository
+#### Scenario: Publish workflow triggers on version tag push with v prefix
+- **WHEN** a git tag matching pattern `vX.Y.Z` is pushed to the repository (e.g., `v0.1.5`)
+- **THEN** publish.yml workflow executes automatically
+
+#### Scenario: Publish workflow triggers on version tag push without v prefix
+- **WHEN** a git tag matching pattern `X.Y.Z` is pushed to the repository (e.g., `0.1.5`)
 - **THEN** publish.yml workflow executes automatically
 
 #### Scenario: Publish workflow does not trigger on non-version tags
-- **WHEN** a git tag not matching pattern `v*` is pushed (e.g., `test-tag`)
+- **WHEN** a git tag not matching pattern `v?[0-9]+.[0-9]+.[0-9]*` is pushed (e.g., `test-tag`, `alpha`)
 - **THEN** publish.yml workflow does NOT execute
 
 #### Scenario: Single unified workflow for publishing
@@ -136,8 +140,12 @@ stateDiagram-v2
 - **WHEN** new version is released
 - **THEN** version follows MAJOR.MINOR.PATCH format
 
-#### Scenario: Version tag matches package.json version exactly
+#### Scenario: Version tag matches package.json version exactly (with v prefix)
 - **WHEN** a version tag `vX.Y.Z` is pushed
+- **THEN** the git tag version (with v stripped) MUST be identical to package.json version field
+
+#### Scenario: Version tag matches package.json version exactly (without v prefix)
+- **WHEN** a version tag `X.Y.Z` is pushed
 - **THEN** the git tag version MUST be identical to package.json version field
 
 #### Scenario: Publish triggered by version tag push
