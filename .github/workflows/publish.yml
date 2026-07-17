@@ -1,8 +1,9 @@
 name: Publish
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   id-token: write  # Required for OIDC
@@ -12,68 +13,92 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Use Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20.x'
-        registry-url: 'https://registry.npmjs.org'
-    - name: Update npm
-      run: npm install -g npm@latest
-    - run: npm ci
-    - run: npm run build --if-present
-    - name: Run tests with coverage
-      run: npm test -- --coverage
-    - name: Validate coverage thresholds
-      run: |
-        # Check that coverage meets minimum thresholds
-        COVERAGE_OUTPUT=$(npm test -- --coverage --silent 2>&1)
-        if echo "$COVERAGE_OUTPUT" | grep -q "FAIL.*Coverage"; then
-          echo "ERROR: Coverage thresholds not met"
-          exit 1
-        fi
-        echo "Coverage thresholds validated"
-    - name: Validate package contents
-      run: node scripts/validate-package-contents.cjs
-    - name: Validate entry points
-      run: node scripts/validate-entry-points.cjs
-    - name: Verify CHANGELOG.md exists
-      run: |
-        if [ ! -f "CHANGELOG.md" ]; then
-          echo "ERROR: CHANGELOG.md is required for release"
-          exit 1
-        fi
-    - name: Verify version consistency
-      run: |
-        PACKAGE_VERSION=$(node -p "require('./package.json').version")
-        TAG_VERSION=${GITHUB_REF#refs/tags/}
-        if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
-          echo "ERROR: Version mismatch - package.json: $PACKAGE_VERSION, tag: $TAG_VERSION"
-          exit 1
-        fi
-        echo "Version consistency verified: $PACKAGE_VERSION"
-    - name: Verify prerelease is optional
-      run: |
-        # Prerelease versions are OPTIONAL - this is just for documentation
-        echo "Note: Prerelease versions (alpha, beta, rc) are OPTIONAL, not mandatory"
-    - name: Security - Scan for credentials in repository
-      run: |
-        # Scan for common credential patterns
-        if grep -r -E "(password|secret|api[_-]?key|access[_-]?token|auth[_-]?token|private[_-]?key|client[_-]?secret)" . --include="*.json" --include="*.js" --include="*.ts" --exclude-dir=node_modules --exclude-dir=dist 2>/dev/null | grep -v "test\|mock\|example\|placeholder"; then
-          echo "ERROR: Potential credentials found in repository"
-          exit 1
-        fi
-        echo "No credentials found in repository"
-    - name: Security - Scan for credentials in logs
-      run: |
-        # This step verifies that no credentials would appear in logs
-        # In a real workflow, we would check the log output
-        echo "Credentials would be masked by GitHub Actions secrets"
-    - name: Publish with fail-closed behavior
-      id: publish
-      run: |
-        # Any failure in previous steps would have blocked execution here
-        # This ensures fail-closed: no package published if any check fails
-        npm publish || exit 1
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # Step 1: Checkout repository
+      - uses: actions/checkout@v4
+
+      # Step 2: Setup Node.js 20.x environment
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      # Step 3: Update npm to latest
+      - name: Update npm
+        run: npm install -g npm@latest
+
+      # Step 4: Install dependencies using npm ci
+      - name: Install dependencies
+        run: npm ci
+
+      # Step 5: Run build
+      - name: Run build
+        run: npm run build --if-present
+
+      # Step 6: Run tests with coverage
+      - name: Run tests with coverage
+        run: npm test -- --coverage
+
+      # Step 7: Validate coverage thresholds (80% minimum)
+      - name: Validate coverage thresholds
+        run: |
+          COVERAGE_OUTPUT=$(npm test -- --coverage --silent 2>&1)
+          if echo "$COVERAGE_OUTPUT" | grep -q "FAIL.*Coverage"; then
+            echo "ERROR: Coverage thresholds not met"
+            exit 1
+          fi
+          echo "Coverage thresholds validated"
+
+      # Step 8: Validate package contents
+      - name: Validate package contents
+        run: node scripts/validate-package-contents.cjs
+
+      # Step 9: Validate entry points
+      - name: Validate entry points
+        run: node scripts/validate-entry-points.cjs
+
+      # Step 10: Verify CHANGELOG.md exists
+      - name: Verify CHANGELOG.md exists
+        run: |
+          if [ ! -f "CHANGELOG.md" ]; then
+            echo "ERROR: CHANGELOG.md is required for release"
+            exit 1
+          fi
+
+      # Step 11: Verify version consistency between git tag and package.json
+      - name: Verify version consistency
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION=${GITHUB_REF#refs/tags/}
+          if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
+            echo "ERROR: Version mismatch - package.json: $PACKAGE_VERSION, tag: $TAG_VERSION"
+            exit 1
+          fi
+          echo "Version consistency verified: $PACKAGE_VERSION"
+
+      # Step 12: Security scan for credentials in repository
+      - name: Security - Scan for credentials in repository
+        run: |
+          # Scan for common credential patterns
+          if grep -r -E "(password|secret|api[_-]?key|access[_-]?token|auth[_-]?token|private[_-]?key|client[_-]?secret)" . --include="*.json" --include="*.js" --include="*.ts" --exclude-dir=node_modules --exclude-dir=dist 2>/dev/null | grep -v "test\|mock\|example\|placeholder"; then
+            echo "ERROR: Potential credentials found in repository"
+            exit 1
+          fi
+          echo "No credentials found in repository"
+
+      # Step 13: Note that credentials are masked in logs
+      - name: Security - Credentials masked in logs
+        run: |
+          echo "Credentials would be masked by GitHub Actions secrets"
+
+      # Step 14: Dry-run publish validation
+      - name: Dry-run publish validation
+        run: |
+          npm publish --dry-run
+          echo "Dry-run complete - NO actual package was published"
+
+      # Step 15: Actual publish (only executes if all above pass)
+      - name: Publish to npm registry
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

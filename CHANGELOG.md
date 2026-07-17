@@ -49,6 +49,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configured CI/CD to mask credentials in logs
 - Prohibited actual npm publish for verification (dry-run only)
 
+### Fixed
+
+- Fixed GitHub Actions publish workflow to trigger on semantic version tag pushes (`v*`) instead of GitHub release creation
+- Consolidated publish and verify-publish workflows into single unified workflow
+- Ensured all pre-publish validations execute in correct order: tests, coverage, build, package validation, entry points, changelog, version consistency, security scan, dry-run
+- Added dry-run publish validation step before actual publish to comply with Safe Publishing requirement
+- Removed redundant verify-publish.yml workflow
+
 ---
 
 **Note**: This changelog is REQUIRED for all releases. Pre-release versions (alpha, beta, rc) are OPTIONAL and not mandatory for the release workflow.
