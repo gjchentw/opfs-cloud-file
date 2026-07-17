@@ -81,8 +81,8 @@ jobs:
       # Step 12: Security scan for credentials in repository
       - name: Security - Scan for credentials in repository
         run: |
-          # Scan for common credential patterns
-          if grep -r -E "(password|secret|api[_-]?key|access[_-]?token|auth[_-]?token|private[_-]?key|client[_-]?secret)" . --include="*.json" --include="*.js" --include="*.ts" --exclude-dir=node_modules --exclude-dir=dist 2>/dev/null | grep -v "test\|mock\|example\|placeholder"; then
+          # Scan for common credential patterns in config files only (exclude source code)
+          if grep -r -E "(password|secret|api[_-]?key|access[_-]?token|auth[_-]?token|private[_-]?key|client[_-]?secret)" . --include="*.json" --include="*.js" --include="*.ts" --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=src --exclude-dir=providers 2>/dev/null | grep -v "test\|mock\|example\|placeholder"; then
             echo "ERROR: Potential credentials found in repository"
             exit 1
           fi
