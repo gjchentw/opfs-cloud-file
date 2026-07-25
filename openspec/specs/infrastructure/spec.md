@@ -63,7 +63,7 @@ The testing system SHALL output Jest text coverage report to stdout.
 
 The testing system SHALL generate LCOV coverage report at `coverage/lcov.info`.
 
-**Implementation**: jest.config.cjs (coverageReporters configuration), babel.config.json
+**Implementation**: jest.config.cjs (coverageReporters configuration), babel.config.json, .github/workflows/test.yml
 **Verification**: npm test -- --coverage
 
 ```mermaid
@@ -83,8 +83,16 @@ flowchart TD
 - **WHEN** `npm test` is executed
 - **THEN** all defined tests run and complete successfully
 
+#### Scenario: Tests execute on Node.js 24.x
+- **WHEN** `npm test` is executed in Node.js 24.x environment
+- **THEN** all defined tests run and complete successfully
+
 #### Scenario: jsdom environment available
 - **WHEN** tests requiring DOM APIs are executed
+- **THEN** jsdom environment provides necessary DOM APIs
+
+#### Scenario: jsdom environment available on Node.js 24.x
+- **WHEN** tests requiring DOM APIs are executed on Node.js 24.x
 - **THEN** jsdom environment provides necessary DOM APIs
 
 #### Scenario: Babel transformation applied
@@ -175,6 +183,10 @@ The CI/CD pipeline SHALL setup Node.js 24.x environment for all jobs.
 
 The CI/CD pipeline SHALL install dependencies using `npm ci` for reproducible builds.
 
+The CI/CD pipeline SHALL trigger the publish workflow on push events for tags matching the pattern `v?[0-9]+.[0-9]+.[0-9]*` (semantic version tags with optional v prefix).
+
+The CI/CD pipeline SHALL use a single unified workflow for both validation and publishing to eliminate redundancy.
+
 **Implementation**: .github/workflows/test.yml, .github/workflows/build.yml, .github/workflows/publish.yml
 **Verification**: GitHub Actions execution
 
@@ -195,6 +207,8 @@ sequenceDiagram
         GA->>GA: npm run build
     end
     alt publish workflow
+        GA->>GA: Run validations (1-9)
+        GA->>npm: npm publish --dry-run
         GA->>npm: npm publish
     end
 ```
@@ -212,9 +226,21 @@ sequenceDiagram
 - **WHEN** code is merged to main branch
 - **THEN** build.yml workflow builds the library successfully
 
-#### Scenario: Publish workflow executes on release
-- **WHEN** new version tag is pushed
-- **THEN** publish.yml workflow publishes to npm registry
+#### Scenario: Publish workflow executes on version tag push with v prefix
+- **WHEN** a git tag matching pattern `vX.Y.Z` is pushed to the repository
+- **THEN** publish.yml workflow executes automatically
+
+#### Scenario: Publish workflow executes on version tag push without v prefix
+- **WHEN** a git tag matching pattern `X.Y.Z` is pushed to the repository
+- **THEN** publish.yml workflow executes automatically
+
+#### Scenario: Publish workflow does not trigger on non-version tags
+- **WHEN** a git tag not matching pattern `v?[0-9]+.[0-9]+.[0-9]*` is pushed
+- **THEN** publish.yml workflow does NOT execute
+
+#### Scenario: Single unified workflow for publishing
+- **WHEN** publish validation is needed
+- **THEN** a single publish.yml workflow handles all validation and publishing logic
 
 #### Scenario: Dependencies installed reproducibly
 - **WHEN** CI workflow executes
@@ -289,8 +315,10 @@ The project SHALL maintain a CHANGELOG.md file for tracking release history as a
 
 The project SHALL ensure that SemVer version tag MUST match package.json version exactly with no discrepancies.
 
-**Implementation**: package.json (version field), CHANGELOG.md
-**Verification**: Version comparison between git tag and package.json, CHANGELOG.md existence check
+The publishing workflow SHALL trigger automatically when a semantic version tag is pushed to the repository.
+
+**Implementation**: package.json (version field), CHANGELOG.md, .github/workflows/publish.yml
+**Verification**: Version comparison between git tag and package.json, workflow execution on tag push
 
 ```mermaid
 stateDiagram-v2
@@ -327,13 +355,25 @@ stateDiagram-v2
 - **WHEN** a release is prepared
 - **THEN** CHANGELOG.md file MUST exist in the repository root
 
-#### Scenario: Version tag matches package.json version exactly
-- **WHEN** a version tag is created for release
+#### Scenario: Version tag matches package.json version exactly (with v prefix)
+- **WHEN** a version tag `vX.Y.Z` is pushed
+- **THEN** the git tag version (with v stripped) MUST be identical to package.json version field
+
+#### Scenario: Version tag matches package.json version exactly (without v prefix)
+- **WHEN** a version tag `X.Y.Z` is pushed
 - **THEN** the git tag version MUST be identical to package.json version field
 
 #### Scenario: Package published to npm
 - **WHEN** publish workflow completes successfully
 - **THEN** package is available on npm registry
+
+#### Scenario: Publish triggered by version tag push
+- **WHEN** a semantic version tag is pushed
+- **THEN** publish workflow executes and publishes to npm registry
+
+#### Scenario: Pre-release versions trigger publish
+- **WHEN** a pre-release tag matching `v*-*`-pattern is pushed (e.g., `v1.0.0-alpha.1`)
+- **THEN** publish workflow executes and publishes pre-release version to npm registry
 
 #### Scenario: Prepublish validation runs
 - **WHEN** npm publish is executed
@@ -524,7 +564,7 @@ flowchart TD
 
 ---
 
-### Requirement: Release Validation (ADDED)
+### Requirement: Release Validation
 
 The publishing system SHALL require that all tests pass with 100% pass rate before package publication.
 
@@ -534,43 +574,53 @@ The publishing system SHALL require that build completes successfully without er
 
 The publishing system SHALL require that package contents validation passes before package publication.
 
+The validation steps SHALL execute in the following order:
+1. Run all tests with coverage
+2. Validate coverage thresholds are met
+3. Run build
+4. Validate package contents
+5. Validate entry points
+6. Verify CHANGELOG.md exists
+7. Verify version consistency between tag and package.json
+8. Security scan for credentials
+9. Dry-run npm publish
+
 **Implementation**: CI/CD workflow pre-publish checks, custom validation scripts
-**Verification**: Complete pre-publish validation execution
+**Verification**: Complete pre-publish validation execution in correct order
 
 ```mermaid
 flowchart TD
-    A[Pre-Publish Validation] --> B[Run Tests]
-    A --> C[Check Coverage]
-    A --> D[Run Build]
-    A --> E[Validate Package Contents]
-    
-    B --> F{All Tests Pass?}
-    C --> G{All Coverage >= 80%?}
-    D --> H{Build Success?}
-    E --> I{Package Valid?}
-    
-    F -->|Yes| J[Tests: PASS]
-    G -->|Yes| K[Coverage: PASS]
-    H -->|Yes| L[Build: PASS]
-    I -->|Yes| M[Package: PASS]
-    
-    J --> N[All Validations Pass]
-    K --> N
-    L --> N
-    M --> N
-    
-    F -->|No| O[FAIL: Tests]
-    G -->|No| P[FAIL: Coverage]
-    H -->|No| Q[FAIL: Build]
-    I -->|No| R[FAIL: Package]
-    
-    N --> S[Ready to Publish]
-    O --> T[Fix Required]
-    P --> T
-    Q --> T
-    R --> T
+    A[Start Publish Workflow] --> B[Run Tests with Coverage]
+    B --> C{Tests Pass?}
+    C -->|No| Z[FAIL: Block Publish]
+    C -->|Yes| D[Validate Coverage >= 80%]
+    D --> E{Coverage OK?}
+    E -->|No| Z
+    E -->|Yes| F[Run Build]
+    F --> G{Build Success?}
+    G -->|No| Z
+    G -->|Yes| H[Validate Package Contents]
+    H --> I{Package Valid?}
+    I -->|No| Z
+    I -->|Yes| J[Validate Entry Points]
+    J --> K{Entry Points Valid?}
+    K -->|No| Z
+    K -->|Yes| L[Verify CHANGELOG.md]
+    L --> M{CHANGELOG Exists?}
+    M -->|No| Z
+    M -->|Yes| N[Verify Version Consistency]
+    N --> O{Version Match?}
+    O -->|No| Z
+    O -->|Yes| P[Security Scan]
+    P --> Q{No Credentials?}
+    Q -->|No| Z
+    Q -->|Yes| R[Dry-run Publish]
+    R --> S{Dry-run OK?}
+    S -->|No| Z
+    S -->|Yes| T[Actual Publish]
+    T --> U[Success]
 ```
-*Caption: Comprehensive release validation with four mandatory checks before publication*
+*Caption: Complete release validation workflow with ordered checks and fail-closed behavior*
 
 #### Scenario: All tests pass before publish
 - **WHEN** pre-publish validation runs
@@ -588,40 +638,60 @@ flowchart TD
 - **WHEN** pre-publish validation runs
 - **THEN** package contents validation MUST pass
 
+#### Scenario: Validations execute in correct order
+- **WHEN** publish workflow executes
+- **THEN** validation steps execute in the order: tests, coverage, build, package validation, entry points, changelog, version, security, dry-run
+
 ---
 
-### Requirement: Safe Publishing (ADDED)
+### Requirement: Safe Publishing
 
 The verification system SHALL use only non-publish methods (such as `npm publish --dry-run`) for validation purposes.
 
 The verification system SHALL NEVER use actual `npm publish` for verification or testing purposes.
 
-**Implementation**: Verification scripts, CI/CD workflow design
-**Verification**: Inspection of verification commands
+The actual `npm publish` command SHALL only execute as the final step after ALL validation checks have passed successfully.
+
+The publishing workflow SHALL include a dry-run validation step before the actual publish step.
+
+**Implementation**: .github/workflows/publish.yml, verification scripts
+**Verification**: Inspection of workflow commands, confirmation that dry-run is used for validation
 
 ```mermaid
 sequenceDiagram
-    participant Developer
-    participant Verifier as Verification System
-    participant npm
+    participant Tag as Git Tag Push
+    participant Workflow as Publish Workflow
+    participant npm as npm Registry
     
-    Developer->>Verifier: Trigger verification
-    Verifier->>npm: npm publish --dry-run
-    npm-->>Verifier: Dry-run results (no actual publish)
-    Verifier-->>Developer: Verification complete
-    
-    Note over npm: NO package published
-    Note over Developer,Verifier: Actual npm publish NEVER used for verification
+    Tag->>Workflow: Trigger on v* tag
+    Workflow->>Workflow: Run validations (1-9)
+    Workflow->>npm: npm publish --dry-run
+    npm-->>Workflow: Dry-run results
+    alt All validations pass
+        Workflow->>npm: npm publish (actual)
+        npm-->>Workflow: Publish success
+        Workflow->>Tag: Package published
+    else Any validation fails
+        Workflow->>Tag: FAIL - NO publish
+    end
 ```
-*Caption: Safe publishing verification using dry-run only, never actual publish*
+*Caption: Safe publishing sequence with dry-run validation before actual publish*
 
-#### Scenario: Dry-run used for verification
-- **WHEN** verification of publishing is performed
-- **THEN** system uses `npm publish --dry-run` or equivalent non-publish command
+#### Scenario: Dry-run used for validation
+- **WHEN** validation of publishing is performed
+- **THEN** system uses `npm publish --dry-run` for validation step
 
-#### Scenario: No actual publish during verification
-- **WHEN** verification commands are executed
+#### Scenario: Actual publish only after all validations pass
+- **WHEN** all validation steps complete successfully
+- **THEN** system executes `npm publish` as the final step
+
+#### Scenario: No actual publish during validation failure
+- **WHEN** any validation step fails
 - **THEN** NO actual package is published to any registry
+
+#### Scenario: Actual npm publish is used for release
+- **WHEN** all validations pass and it is a production release
+- **THEN** system uses actual `npm publish` command to publish package
 
 ---
 
