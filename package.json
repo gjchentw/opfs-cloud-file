@@ -26,13 +26,14 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/opfs-cloud-file.js",
       "require": "./dist/opfs-cloud-file.umd.cjs"
     }
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && cp index.d.ts dist/index.d.ts",
     "preview": "vite preview",
     "test": "jest",
     "prepublishOnly": "npm run build"
